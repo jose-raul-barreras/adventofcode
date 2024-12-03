@@ -46,7 +46,7 @@ class TestAdventOfCodeDay2(unittest.TestCase):
         """
         Set up test data for unit tests.
         """
-        self.data_1 = 'xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))'
+        self.data_1 = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
         self.data_2 = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
 
     def test_add_multiplications(self):
