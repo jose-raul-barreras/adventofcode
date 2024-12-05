@@ -18,22 +18,32 @@ def load_data(input_file):
         raise FileNotFoundError(f"Input file not found: {input_file}")
 
     with open(file_name, 'r') as f: 
-        data = f.read()
+        lines = f.read().splitlines()
+    data = [list(line) for line in lines]
     return data
 
 def get_strings_horizontal(data):
+    """
+    Get all the strings in the matrix by reading the rows.
+    """
     strings = []
     for i in range(len(data)):
         strings.append(''.join(data[i]))
     return strings
 
 def get_strings_vertical(data):
+    """
+    Get all the strings in the matrix by reading the columns.
+    """
     strings = []
     for i in range(len(data)):
         strings.append(''.join([data[j][i] for j in range(len(data))]))
     return strings
 
 def get_strings_diagonal_top_left_bottom_right(data):
+    """
+    Get all the strings in the matrix by reading the diagonals from top-left to bottom-right.
+    """
     strings = []
     n = len(data)
     for i in range(n):
@@ -58,6 +68,9 @@ def get_strings_diagonal_top_left_bottom_right(data):
     return strings
 
 def get_strings_diagonal_top_right_bottom_left(data):
+    """
+    Get all the strings in the matrix by reading the diagonals from top-right to bottom-left.
+    """
     strings = []
     n = len(data)
     for i in range(n):
@@ -99,13 +112,75 @@ def count_string(data, search_string):
     
     return count
 
+def find_locations(data, search_string):
+    locations = []
+    n = len(data)
+    search_len = len(search_string)
+    
+    # Check diagonals from top-left to bottom-right
+    for i in range(n):
+        for j in range(n):
+            if i + search_len <= n and j + search_len <= n:
+                # Check forward diagonal
+                if ''.join(data[i + k][j + k] for k in range(search_len)) == search_string:
+                    locations.append((i, j))
+                # Check backward diagonal
+                if ''.join(data[i + k][j + k] for k in range(search_len)) == search_string[::-1]:
+                    locations.append((i, j))
+    
+    # Check diagonals from top-right to bottom-left
+    for i in range(n):
+        for j in range(n):
+            if i + search_len <= n and j - search_len >= -1:
+                # Check forward diagonal
+                if ''.join(data[i + k][j - k] for k in range(search_len)) == search_string:
+                    locations.append((i, j))
+                # Check backward diagonal
+                if ''.join(data[i + k][j - k] for k in range(search_len)) == search_string[::-1]:
+                    locations.append((i, j))
+    
+    return locations
+
+def count_x_shaped_string(grid):
+    if not grid or not grid[0]:
+        return 0
+    
+    rows, cols = len(grid), len(grid[0])
+    count = 0
+    
+    def check_x_pattern(r, c):
+        patterns = 0
+        # Check if we can form an X (need 1 space in each direction)
+        if r < 1 or r >= rows-1 or c < 1 or c >= cols-1:
+            return 0
+            
+        # Possible MAS/SAM combinations for each diagonal
+        valid_patterns = ["MAS", "SAM"]
+        
+        # Check all combinations of diagonals
+        for p1 in valid_patterns:
+            for p2 in valid_patterns:
+                # Top-left to bottom-right + Top-right to bottom-left
+                if (grid[r-1][c-1] == p1[0] and grid[r][c] == p1[1] and grid[r+1][c+1] == p1[2] and
+                    grid[r-1][c+1] == p2[0] and grid[r][c] == p2[1] and grid[r+1][c-1] == p2[2]):
+                    patterns += 1
+
+        return patterns
+
+    # Check each possible center position
+    for i in range(rows):
+        for j in range(cols):
+            count += check_x_pattern(i, j)
+            
+    return count
+
 class TestAdventOfCodeDay(unittest.TestCase):
     def setUp(self):
         """
         Set up test data for unit tests.
         """
 
-        self.test_data = [
+        self.test_data = [[
             list("MMMSXXMASM"),
             list("MSAMXMSMSA"),
             list("AMXSXMAAMM"),
@@ -116,37 +191,39 @@ class TestAdventOfCodeDay(unittest.TestCase):
             list("SAXAMASAAA"),
             list("MAMMMXMMMM"),
             list("MXMXAXMASX")
+        ],
         ]
+        self.answers = [9]
 
-        self.test_data_numeric = [
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789"),
-            list("0123456789")
-        ]
     def test_count_string(self):
         """
         Test count_string function.
         """
-        self.assertEqual(count_string(self.test_data, "XMAS"), 18)
+        self.assertEqual(count_string(self.test_data[0], "XMAS"), 18)
  
     def test_load_data(self):
         """
         Test load_data function.
         """
-        self.assertIsNotNone(load_data('04.txt'))
+        data = load_data('04.txt')
+        print("Number of lines: ", len(data))
+        print("Number of characters in each line: ", len(data[0]))
+        self.assertIsNotNone(data)
+
+    def test_count_x_shaped_string(self):
+        """
+        Test count_x_shaped_string function.
+        """
+        for i in range(len(self.test_data)):
+            self.assertEqual(count_x_shaped_string(self.test_data[i]), self.answers[i])
 
 
 def main():
     input_file = '04.txt'
     data = load_data(input_file)
-    print(data[1])
+    search_string = "XMAS"
+    print(f"Number of occurences of '{search_string}': ", count_string(data, search_string))
+    print(f"Number of occurences of X-shaped 'MAS': ", count_x_shaped_string(data))
 
 if __name__ == "__main__":
     import sys
