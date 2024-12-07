@@ -3,7 +3,11 @@
 
 import os
 import unittest
-import time
+import copy
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import multiprocessing as mp
 
 # https://adventofcode.com/2024/day/6
 
@@ -125,7 +129,82 @@ def run_shift(floor_map, guard):
             path.append(position)
         guard = move_guard(floor_map, guard)
         (position, orientation) = guard
+        
     return path
+
+# second part
+
+def is_a_loop(floor_map, guard):
+    (position, orientation) = guard
+    path = []
+    while not out_of_bounds(floor_map, position) and (guard not in path):
+        path.append(guard)
+        guard = move_guard(floor_map, guard)
+        (position, orientation) = guard
+
+    return not out_of_bounds(floor_map, position)
+
+def progress_bar_and_traps(current, total, traps, bar_length=60):
+    progress = current / total
+    arrow = "=" * int(progress * bar_length - 1) + ">"
+    spaces = " " * (bar_length - len(arrow))
+    print(f"Progress: [{arrow + spaces}] {current}/{total} -- {traps}", end="\r")
+
+def count_traps(floor_map, guard):
+    traps = []
+    total_positions = (len(floor_map) - 2) * (len(floor_map[0]) - 2)
+    
+    def check_position(row, col):
+        test_floor_map = copy.deepcopy(floor_map)
+        test_floor_map[row][col] = "#"
+        if is_a_loop(test_floor_map, guard):
+            return (row, col)
+        return None
+
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for row in range(1, len(floor_map) - 1):
+            for col in range(1, len(floor_map[0]) - 1):
+                futures.append(executor.submit(check_position, row, col))
+        
+        for i, future in enumerate(futures):
+            result = future.result()
+            if result:
+                traps.append(result)
+            progress_bar_and_traps(i + 1, total_positions, len(traps))
+    
+    return traps
+
+# Move check_position outside to make it pickleable
+def check_position(args):
+    row, col, floor_map, guard = args
+    test_floor_map = copy.deepcopy(floor_map)
+    test_floor_map[row][col] = "#"
+    if is_a_loop(test_floor_map, guard):
+        return (row, col)
+    return None
+
+def count_traps_with_pool_executor(floor_map, guard):
+    traps = []
+    total_positions = (len(floor_map) - 2) * (len(floor_map[0]) - 2)
+    
+    # Create arguments list
+    positions = [
+        (row, col, floor_map, guard)
+        for row in range(1, len(floor_map) - 1)
+        for col in range(1, len(floor_map[0]) - 1)
+    ]
+    
+    # Use max_workers based on CPU cores
+    max_workers = mp.cpu_count()
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        for i, result in enumerate(executor.map(check_position, positions)):
+            if result:
+                traps.append(result)
+            progress_bar_and_traps(i + 1, total_positions, len(traps))
+    
+    return traps
 
 class TestAdventOfCodeDay(unittest.TestCase):
     def setUp(self):
@@ -138,65 +217,32 @@ class TestAdventOfCodeDay(unittest.TestCase):
         self.assertEqual(len(floor_map), 12)
         self.assertEqual(len(floor_map[0]), 12)
         guard = get_guard(floor_map)
-        print_floor_map(floor_map)
-        print(guard)
+        # print_floor_map(floor_map)
+        # print(guard)
         path = run_shift(floor_map, guard)
         self.assertEqual(count_visited(floor_map), 41)
-        print_floor_map(floor_map)
-        print(path)
 
-        print("Number of steps:", count_visited(floor_map))
+    def test_is_a_loop(self):
+        floor_map = load_data("test_06.txt")
+        guard = get_guard(floor_map)
+        self.assertEqual(is_a_loop(floor_map, guard), False)
+        floor_map_1 = floor_map
+        floor_map_1[7][4] = "#"
+        self.assertEqual(is_a_loop(floor_map, guard), True)
+        floor_map_2 = floor_map
+        floor_map_2[8][7] = "#"
+        self.assertEqual(is_a_loop(floor_map, guard), True)
+        floor_map_3 = floor_map
+        floor_map_3[9][4] = "#"
+        self.assertEqual(is_a_loop(floor_map, guard), True)
+        floor_map_4 = floor_map
+        floor_map_4[8][10] = "#"
+        self.assertEqual(is_a_loop(floor_map, guard), True)
 
-    # def test_find_guard(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     self.assertEqual(guard_shift.position, (7, 5))
-    #     self.assertEqual(guard_shift.guard, "^")
-
-    # # def test_run_shift(self):
-    # #     floor_map = load_data("test_06.txt")
-    # #     guard_shift = GuardShift(floor_map)
-    # #     guard_shift.run_shift()
-
-    # def test_count_visited(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     guard_shift.run_shift()
-    #     self.assertEqual(guard_shift.count_visited(), 40)
-    #     guard_shift.print_floor_map()
-    #     print(len(guard_shift.path))
-
-    # def test_possible_traps(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     print("Possible traps:")
-    #     for trap in guard_shift.find_traps():
-    #         print(trap)
-
-    # def test_find_horizontal_lines(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     print("Horizontal lines:")
-    #     for line in guard_shift.find_horinzontal_lines():
-    #         print(line)
-    
-    # def test_find_vertical_lines(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     print("Vertical lines:")
-    #     for line in guard_shift.find_vertical_lines():
-    #         print(line)
-
-    # def test_count_traps(self):
-    #     floor_map = load_data("test_06.txt")
-    #     guard_shift = GuardShift(floor_map)
-    #     bk_map = floor_map
-    #     tmp_floor_map = floor_map
-    #     tmp_floor_map[7][4] = "#"
-    #     guard_shift.print_floor_map(tmp_floor_map)
-    #     print("is a loop:", guard_shift.is_a_loop(tmp_floor_map, guard_shift.guard, guard_shift.position))
-    #     guard_shift.floor_map = bk_map
-    #     print("Count traps:", guard_shift.count_traps(tmp_floor_map))
+    def test_count_traps(self):
+        floor_map = load_data("test_06.txt")
+        guard = get_guard(floor_map)   
+        self.assertEqual(len(count_traps_with_pool_executor(floor_map, guard)), 6)
 
 def main():
     input_file = "05.txt"
@@ -204,6 +250,9 @@ def main():
     guard = get_guard(floor_map)   
     path = run_shift(floor_map, guard)
     print ("Number of steps:", count_visited(floor_map))
+
+    traps = count_traps_with_pool_executor(floor_map, guard)
+    print("Number of traps:", len(traps))
 
 
 if __name__ == "__main__":
@@ -215,3 +264,51 @@ if __name__ == "__main__":
     else:
         # Execute the main function
         main()
+
+
+# # Different approach, heuristic, not tested yet
+
+# def find_horinzontal_lines(floor_map):
+#     lines = []
+#     for row in range(1, len(floor_map)-1):
+#         line = []
+#         for col in range(1, len(floor_map[0])-1):
+#             if floor_map[row][col] == OBSTACLE:
+#                 if line:
+#                     lines.append(line)
+#                     line = []
+#             else:
+#                 line.append((row, col))
+#         if line:
+#             lines.append(line)
+#     return [line for line in lines if len(line) > 1]
+
+# def find_vertical_lines(floor_map):
+#     lines = []
+#     for col in range(1, len(floor_map[0])-1):
+#         line = []
+#         for row in range(1, len(floor_map)-1):
+#             if floor_map[row][col] == OBSTACLE:
+#                 if line:
+#                     lines.append(line)
+#                     line = []
+#             else:
+#                 line.append((row, col))
+#         if line:
+#             lines.append(line)
+#     return [line for line in lines if len(line) > 1]
+
+# def overlap_horizontal_lines(line1, line2):
+#     set1 = set(line1).intersection([(line1[0][0], point[1]) for point in line2])
+#     set2 = set(line2).intersection([(line2[0][0], point[1]) for point in line1])
+#     return [sorted(set1), sorted(set2)]
+
+# def overlap_vertical_lines(line1, line2):
+#     set1 = set(line1).intersection([(point[0],line1[0][1]) for point in line2])
+#     set2 = set(line2).intersection([(point[0],line2[0][1]) for point in line1])
+#     return [sorted(set1), sorted(set2)]
+
+# def get_surronding_points(floor_map, point):
+#     row, col = point
+#     possible_points = [(row-1, col), (row+1, col), (row, col-1), (row, col+1)]
+#     return [point for point in possible_points if floor_map[point[0]][point[1]] not in [OBSTACLE, OUT_OF_BOUNDS]]
