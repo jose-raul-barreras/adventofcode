@@ -3,7 +3,8 @@
 
 import os
 import unittest
-import copy
+from itertools import product
+import operator
 
 # https://adventofcode.com/2024/day/7
 
@@ -56,8 +57,44 @@ class Equations:
                     return True
         return False
     
+
+    def _brute_force_combinatorial(self, arr, target, operators=["+", "*"]):
+        valid_solutions = []
+
+        def _calc(a, b, op):
+            if op == "+":
+                return a + b
+            elif op == "*":
+                return a * b
+            elif op == "|":
+                return int(str(a) + str(b))
+            else:
+                raise ValueError(f"Invalid operator: {op}")
+
+
+        # Generate all possible operator combinations
+        for operators in product(operators, repeat=len(arr)-1):
+            try:
+                # Start with first number
+                result = arr[0]
+                
+                # Apply each operator sequentially
+                for i, op in enumerate(operators):
+                    result = _calc (result, arr[i+1], op)
+                    
+                # Check if we hit target (using small epsilon for float comparison)
+                if abs(result - target) < 1e-10:
+                    valid_solutions.append(operators)
+                    
+            except ZeroDivisionError:
+                continue
+                
+        return valid_solutions
+
     def calibration(self, operators=["+", "*"]):
-        return self._brute_force(self.operands, self.result, 1, self.operands[0], operators=operators)
+        return self._brute_force_combinatorial(self.operands, self.result, operators=operators)
+
+        #return self._brute_force(self.operands, self.result, 1, self.operands[0], operators=operators)
         
 ### Unit tests ###
 
@@ -69,9 +106,8 @@ class TestAdventOfCodeDay(unittest.TestCase):
 
     def test_load_data(self):
         equations = load_data("test_07.txt")
-        for eq in equations:
-            print(eq)
-        print()
+        self.assertEqual(len(equations), 9)
+        
 
     def test_calibration(self):
         equations = load_data("test_07.txt")
@@ -97,6 +133,10 @@ def main():
     equations = load_data(input_file)
     total = sum([ eq.result for eq in equations if eq.calibration()])
     print("Total:", total)
+    total = sum([ eq.result for eq in equations if eq.calibration(operators=["+", "*", "|"])])
+    print("Calibrated Total:", total)
+    
+
 
 
 
