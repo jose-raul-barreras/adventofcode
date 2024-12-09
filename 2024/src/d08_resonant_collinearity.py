@@ -50,6 +50,18 @@ def print_grid(grid, grid_size):
     print()
 
 def antinodes(x, y):
+    """
+    Calculate the antinodes of the line defined by two points.
+
+    Parameters:
+    x (tuple): The first point (x1, y1).
+    y (tuple): The second point (x2, y2).
+
+    Returns:
+    tuple: A tuple containing two points (p3, p4) which are the antinodes of the line defined by the input points.
+
+
+    """
     p1 = min(x, y)
     p2 = max(x, y)
 
@@ -77,10 +89,29 @@ def antinodes(x, y):
     return p3, p4
 
 def remove_out_of_bounds(lst, grid_size):
-    # remove out of bounds antinodes and duplicates
+    """
+    Remove out-of-bounds antinodes and duplicates.
+    
+    Args:
+        lst: List of antinode points
+        grid_size: Tuple representing the grid size (width, height)
+    
+    Returns:
+        Sorted list of valid antinode points
+    """
     return sorted({element for element in lst if 0 <= element[0] < grid_size[0] and 0 <= element[1] < grid_size[1]})
 
 def get_all_antinodes(grid, grid_size):
+    """
+    Get all antinodes from the grid.
+    
+    Args:
+        grid: Dictionary representing the grid with keys as characters and values as lists of points
+        grid_size: Tuple representing the grid size (width, height)
+    
+    Returns:
+        List of valid antinode points
+    """    
     antinodes_list = []
     for key in grid.keys():
         if key in [".", "#"]:
@@ -96,9 +127,19 @@ def get_all_antinodes(grid, grid_size):
 ### Harmonic antinodes ###
 
 def harmonic_antinodes(p1, p2, grid_size):
-    # return all the points in the line defined by p1 and p2
-    # such that all the points are within the grid
-    # the distance between the points pn and pn+1 is the same as the distance between p1 and p2
+    """
+    Calculate harmonic antinodes for given points p1 and p2.
+    Returns all the points in the line defined by p1 and p2 such that all the points are within the grid
+    The distance between the points pn and pn+1 is the same as the distance between p1 and p2
+       
+    Args:
+        p1: Tuple representing the first point (x1, y1)
+        p2: Tuple representing the second point (x2, y2)
+        grid_size: Tuple representing the grid size (width, height)
+    
+    Returns:
+        List of valid harmonic antinode points
+    """    
     points = []
     dx = p2[0] - p1[0]
     dy = p2[1] - p1[1]
@@ -115,6 +156,21 @@ def harmonic_antinodes(p1, p2, grid_size):
     return points
 
 def get_antinodes_for_frequency(grid, grid_size, frequency):
+    """
+    Calculate the antinodes for a given frequency in a grid.
+    This function takes a grid of antennas, the size of the grid, and a specific frequency,
+    and returns a list of antinodes for that frequency. Antinodes are calculated based on
+    pairs of antennas that resonate at the given frequency.
+
+        Args:
+        grid (dict): A dictionary where keys are frequencies and values are lists of antenna positions.
+        grid_size (int): The size of the grid.
+        frequency (int): The frequency for which to calculate antinodes.
+
+            Returns:
+        list: A list of antinode positions for the given frequency, with positions out of bounds removed.
+    
+    """
     antinodes_list = []
     antennas_pairs = list(itertools.combinations(grid[frequency], 2))
     for antennas in antennas_pairs:
@@ -125,6 +181,23 @@ def get_antinodes_for_frequency(grid, grid_size, frequency):
     return remove_out_of_bounds(antinodes_list, grid_size)
 
 def get_harmonic_antinodes(grid, grid_size):
+    """
+    Identifies and returns the harmonic antinodes from a given grid.
+    This function processes a grid to find harmonic antinodes, which are points
+    where the amplitude of a wave is at a maximum. It skips grid keys that are
+    either '.' or '#', and only considers keys with more than one element. The
+    function then collects antinodes for each frequency and ensures they are
+    within the grid bounds.
+    
+    Args:
+        grid (dict): A dictionary representing the grid where keys are 
+                     frequencies and values are lists of coordinates.
+        grid_size (tuple): A tuple representing the size of the grid (rows, columns).
+
+    Returns:
+        set: A set of coordinates representing the harmonic antinodes within the grid bounds.
+
+    """
     antinodes_list = set()
     for key in grid.keys():
         if key in [".", "#"]:
